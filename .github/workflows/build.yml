@@ -1,0 +1,47 @@
+name: Build GyroTweak.dylib
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Theos
+        run: |
+          git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          echo "PATH=$HOME/theos/bin:$PATH" >> "$GITHUB_ENV"
+          brew install ldid dpkg || true
+
+      - name: Build dylib
+        working-directory: GyroTweak
+        run: |
+          make clean
+          make
+
+      - name: Package deb (best effort)
+        working-directory: GyroTweak
+        continue-on-error: true
+        run: make package
+
+      - name: Upload dylib (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GyroTweak-dylib
+          path: GyroTweak/.theos/obj/**/GyroTweak.dylib
+          if-no-files-found: error
+
+      - name: Upload .deb (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GyroTweak-deb
+          path: GyroTweak/packages/*.deb
+          if-no-files-found: ignore

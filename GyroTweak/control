@@ -1,0 +1,7 @@
+Package: com.example.gyrotweak
+Name: GyroTweak
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Depends: mobilesubstrate, firmware-ios (>= 14.0)
+Maintainer: User <user@example.com>
+Description: Нативный гироскоп для Unity iOS через CoreMotion. Экспортирует C-API: Init, GetRotationRate, GetAcceleration, GetAttitudeQuaternion.
