@@ -6,7 +6,7 @@
 #import "GyroTweak.h"
 
 static CMMotionManager* _motionManager = nil;
-static dispatch_queue_t _motionQueue = nil;
+static NSOperationQueue* _motionQueue = nil;
 static volatile float _sensitivity = 1.0f;
 static UIWindow* _settingsWindow = nil;
 static BOOL _gestureInstalled = NO;
@@ -149,15 +149,22 @@ static void GyroTweak_SaveSettings(void) {
 @end
 
 static UIWindow* GyroTweak_FindKeyWindow(void) {
-    for (UIWindow* w in [UIApplication sharedApplication].windows) {
-        if (w.windowLevel == UIWindowLevelNormal && !w.hidden && w.frame.size.width > 0) {
-            return w;
+    UIApplication* app = [UIApplication sharedApplication];
+    for (UIScene* scene in app.connectedScenes) {
+        if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+        UIWindowScene* windowScene = (UIWindowScene*)scene;
+        if (windowScene.activationState != UISceneActivationStateForegroundActive &&
+            windowScene.activationState != UISceneActivationStateForegroundInactive) {
+            continue;
         }
-    }
-    UIWindow* keyWindow = [UIApplication sharedApplication].keyWindow;
-    if (keyWindow) return keyWindow;
-    for (UIWindow* w in [UIApplication sharedApplication].windows) {
-        if (!w.hidden) return w;
+        for (UIWindow* w in windowScene.windows) {
+            if (w.isKeyWindow && !w.hidden) return w;
+        }
+        for (UIWindow* w in windowScene.windows) {
+            if (w.windowLevel == UIWindowLevelNormal && !w.hidden && w.frame.size.width > 0) {
+                return w;
+            }
+        }
     }
     return nil;
 }
@@ -236,11 +243,13 @@ int GyroTweak_Init(void) {
     _motionManager = [[CMMotionManager alloc] init];
     if (!_motionManager) return -1;
 
-    _motionQueue = dispatch_queue_create("com.gyrotweak.motion", DISPATCH_QUEUE_SERIAL);
+    _motionQueue = [[NSOperationQueue alloc] init];
     if (!_motionQueue) {
         _motionManager = nil;
         return -1;
     }
+    _motionQueue.name = @"com.gyrotweak.motion";
+    _motionQueue.maxConcurrentOperationCount = 1;
 
     _motionManager.gyroUpdateInterval = 1.0 / 60.0;
     _motionManager.accelerometerUpdateInterval = 1.0 / 60.0;
